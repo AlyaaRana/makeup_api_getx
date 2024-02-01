@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 import '../controller/favourite_controller.dart';
 import '../controller/product_controller.dart';
 
 class FavoritePage extends StatelessWidget {
   final favoriteController = Get.find<FavoriteController>();
+  final productController = Get.find<ProductController>();
 
   @override
   Widget build(BuildContext context) {
@@ -24,9 +26,7 @@ class FavoritePage extends StatelessWidget {
           itemCount: favoriteController.favoriteProductIds.length,
           itemBuilder: (context, index) {
             final productId = favoriteController.favoriteProductIds[index];
-            final product = Get.find<ProductController>()
-                .productList
-                .firstWhere((p) => p.id == productId);
+            final product = productController.productList.firstWhere((p) => p.id == productId);
             return Container(
               decoration: BoxDecoration(
                 color: Colors.white,
@@ -36,7 +36,7 @@ class FavoritePage extends StatelessWidget {
               padding: EdgeInsets.all(8),
               child: ListTile(
                 contentPadding: EdgeInsets.zero,
-                leading: Image.network(product.imageLink),
+                leading: _buildProductImage(product.imageLink),
                 title: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -50,12 +50,34 @@ class FavoritePage extends StatelessWidget {
                     ),
                   ],
                 ),
+                trailing: GestureDetector(
+                  onTap: () {
+                    favoriteController.removeFromFavorites(product.id);
+                    Get.snackbar(
+                      'Removed from Favorites',
+                      'Product ${product.name} removed from favorites!',
+                      snackPosition: SnackPosition.TOP,
+                      duration: Duration(seconds: 2),
+                    );
+                  },
+                  child: Icon(
+                    Icons.delete,
+                    color: Colors.red,
+                  ),
+                ),
               ),
             );
-
           },
         );
       }),
+    );
+  }
+
+  Widget _buildProductImage(String imageLink) {
+    return CachedNetworkImage(
+      imageUrl: imageLink,
+      placeholder: (context, url) => CircularProgressIndicator(),
+      errorWidget: (context, url, error) => Icon(Icons.error),
     );
   }
 }

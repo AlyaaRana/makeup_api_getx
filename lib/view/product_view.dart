@@ -1,10 +1,9 @@
-
 import 'package:exercise_satu/controller/product_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-
 import '../controller/favourite_controller.dart';
 import 'favourite_view.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 class ListMakeup extends StatelessWidget {
   final productController = Get.put(ProductController());
@@ -19,6 +18,8 @@ class ListMakeup extends StatelessWidget {
       body: Obx(() {
         if (productController.isLoading.value) {
           return Center(child: CircularProgressIndicator());
+        } else if (productController.productList.isEmpty) {
+          return Center(child: Text("No internet connection or failed to fetch data"));
         } else {
           return ListView.builder(
             itemCount: productController.productList.length,
@@ -33,7 +34,7 @@ class ListMakeup extends StatelessWidget {
                 padding: EdgeInsets.all(8),
                 child: ListTile(
                   contentPadding: EdgeInsets.zero,
-                  leading: Image.network(product.imageLink),
+                  leading: _buildProductImage(product.imageLink),
                   title: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -53,35 +54,23 @@ class ListMakeup extends StatelessWidget {
                       GestureDetector(
                         onTap: () {
                           favoriteController.toggleFavorite(product.id);
+                          Get.snackbar(
+                            'Added to Favorites',
+                            'Product ${product.name} added to favorites!',
+                            snackPosition: SnackPosition.TOP,
+                            duration: Duration(seconds: 2),
+                          );
                         },
                         child: Obx(() {
                           return Icon(
                             Icons.favorite,
-                            color: product.isFavorite(favoriteController)
+                            color: favoriteController.favoriteProductIds.contains(product.id)
                                 ? Colors.red
                                 : Colors.grey,
-                            // You can set a border here if needed
-                            // border: Border.all(color: Colors.black, width: 2.0),
                           );
                         }),
                       ),
                       SizedBox(width: 8),
-                      PopupMenuButton(
-                        icon: Icon(Icons.more_vert),
-                        itemBuilder: (context) => [
-                          PopupMenuItem(
-                            child: Text('Edit'),
-                          ),
-                          PopupMenuItem(
-                            child: GestureDetector(
-                              onTap: () {
-                                productController.productList.remove(product);
-                              },
-                              child: Text('Delete'),
-                            ),
-                          ),
-                        ],
-                      ),
                     ],
                   ),
                 ),
@@ -94,9 +83,17 @@ class ListMakeup extends StatelessWidget {
         onPressed: () {
           Get.to(() => FavoritePage());
         },
-        child: Icon(Icons.favorite, color: Colors.red), // Set the color of the icon
+        child: Icon(Icons.favorite, color: Colors.red),
         backgroundColor: Colors.white,
       ),
+    );
+  }
+
+  Widget _buildProductImage(String imageLink) {
+    return CachedNetworkImage(
+      imageUrl: imageLink,
+      placeholder: (context, url) => CircularProgressIndicator(),
+      errorWidget: (context, url, error) => Icon(Icons.error),
     );
   }
 }

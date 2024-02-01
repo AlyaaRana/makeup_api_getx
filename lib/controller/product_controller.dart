@@ -2,6 +2,7 @@ import 'package:get/get.dart';
 import 'package:http/http.dart' as http;
 import 'package:exercise_satu/model/product_model.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:connectivity/connectivity.dart';
 
 class ProductController extends GetxController {
   var isLoading = true.obs;
@@ -17,9 +18,9 @@ class ProductController extends GetxController {
 
   void loadCachedProducts() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
-    if (prefs.containsKey(cacheKey)) {
-      String cachedData = prefs.getString(cacheKey) ?? '';
-      productList.value = productFromJson(cachedData) ?? [];
+    String? cachedData = prefs.getString(cacheKey);
+    if (cachedData != null) {
+      productList.assignAll(productFromJson(cachedData) ?? []);
     }
   }
 
@@ -28,23 +29,35 @@ class ProductController extends GetxController {
     prefs.setString(cacheKey, productToJson(productList));
   }
 
-  void fetchProducts() async {
+  Future<void> fetchProducts() async {
     isLoading(true);
 
     try {
-      final response = await http.get(
-        Uri.parse('https://makeup-api.herokuapp.com/api/v1/products.json?brand=maybelline'),
-      );
-      if (response.statusCode == 200) {
-        productList.value = productFromJson(response.body) ?? [];
-        saveProductsToCache();
+      bool internetAvailable = await hasInternetConnection();
+
+      if (internetAvailable) {
+        final response = await http.get(
+          Uri.parse('https://makeup-api.herokuapp.com/api/v1/products.json?brand=maybelline'),
+        );
+        if (response.statusCode == 200) {
+          productList.assignAll(productFromJson(response.body) ?? []);
+          saveProductsToCache();
+        } else {
+          print('Error: ${response.statusCode}');
+        }
       } else {
-        print('Error: ${response.statusCode}');
+        print('No internet connection. Loading data from cache.');
+        loadCachedProducts();
       }
     } catch (e) {
       print(e);
     } finally {
       isLoading(false);
     }
+  }
+
+  Future<bool> hasInternetConnection() async {
+    var connectivityResult = await Connectivity().checkConnectivity();
+    return connectivityResult != ConnectivityResult.none;
   }
 }
